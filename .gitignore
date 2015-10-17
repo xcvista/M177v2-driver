@@ -1,0 +1,6 @@
+# Temporary files generated during build
+version.h
+*.o
+*.a
+*.so
+
