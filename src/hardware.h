@@ -10,6 +10,12 @@
 #include <sys/types.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <pthread.h>
+#include <sys/ioctl.h>
 
 __BEGIN_DECLS
 

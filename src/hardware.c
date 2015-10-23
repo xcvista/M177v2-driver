@@ -1,9 +1,6 @@
 
 #include "hardware.h"
 
-#include <sys/stat.h>
-#include <pthread.h>
-
 //------------------------------------------------------------
 // GPIO functions
 //
@@ -21,8 +18,54 @@ enum
 };
 #endif
 
-int gpio_open(gpio_t pin);
-int gpio_close(gpio_t pin);
+char *gpio_name(gpio_t pin)
+{
+    char *gpio_name = malloc(BUFSIZ);
+    if (!gpio_name)
+        return NULL;
+
+    snprintf(gpio_name, BUFSIZ, "/sys/class/gpio/gpio%d", pin);
+    return gpio_name;
+}
+
+int gpio_open(gpio_t pin)
+{
+    char *name = gpio_name(pin);
+    char pinid[20];
+
+    if (!name)
+        return -1;
+    
+    if (file_exist(name, 1))
+        return 0;
+
+    snprintf(pinid, 20, "%d", pin);
+    file_inject("/sys/class/gpio/export", pinid);
+
+    int rv = file_exist(name, 1) ? 0 : -1;
+    free(name);
+    return rv;
+}
+
+int gpio_close(gpio_t pin)
+{
+    char *name = gpio_name(pin);
+    char pinid[20];
+
+    if (!name)
+        return -1;
+
+    if (!file_exist(name, 1))
+        return 0;
+
+    snprintf(pinid, 20, "%d", pin);
+    file_inject("/sys/class/gpio/unexport", pinid);
+
+    int rv = file_exist(name, 1) ? -1 : 0;
+    free(name);
+    return rv;
+}
+
 int gpio_read(gpio_t pin);
 int gpio_write(gpio_t pin, int value);
 
@@ -41,12 +84,48 @@ int gpio_attach_isr(gpio_t pin, gpio_edge_t edge, gpio_isr_t isr);
 // I2C functions
 //------------------------------------------------------------
 
-int i2c_open(const char *devfile, uint8_t addr);
+int i2c_open(const char *devfile, uint8_t addr)
+{
+    int fd = open(devfile, O_RDWR);
+    if (fd < 0)
+        return -1;
+
+    int rv = ioctl(fd, I2C_SLAVE, (int)addr);
+    if (rv < 0)
+    {
+        close(fd);
+        return rv;
+    }
+
+    return fd;
+}
 
 //------------------------------------------------------------
 // Helper functions
 //------------------------------------------------------------
 
-int file_inject(const char *file, const char *contnets);
-int file_exist(const char *file, int directory);
+int file_inject(const char *file, const char *contents)
+{
+    int fd = open(file, O_WRONLY | O_CREAT, 0644);
+    if (fd < 0)
+        return -1;
+
+    ssize_t rv = write(fd, contents, strlen(contents));
+    close(fd);
+    return rv;
+}
+
+int file_exist(const char *file, int directory)
+{
+    struct stat st;
+    if (stat(file, &st))
+    {
+        return 0;
+    }
+    if (directory && !S_ISDIR(st.st_mode))
+    {
+        return 0;
+    }
+    return 1;
+}
 

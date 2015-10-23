@@ -22,6 +22,8 @@ OBJS := ${C_FILES:%.c=%.c.o}
 
 all: $(TARGET)
 
+.PHONY: all clean
+
 install: all
 	mkdir -p $(PREFIX)/{lib,include/librhid}
 	cp $(TARGET) $(PREFIX)/lib
