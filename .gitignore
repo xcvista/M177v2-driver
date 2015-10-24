@@ -4,3 +4,6 @@ version.h
 *.a
 *.so
 
+# OS X trouble
+.AppleDouble
+.DS_Store

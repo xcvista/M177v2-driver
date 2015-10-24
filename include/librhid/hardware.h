@@ -34,8 +34,15 @@ enum
     GPIO_ERR = -1
 };
 
+enum
+{
+    GPIO_INPUT,
+    GPIO_OUTPUT
+};
+
 int gpio_open(gpio_t pin);
 int gpio_close(gpio_t pin);
+int gpio_direction(gpio_t pin, int direction);
 int gpio_read(gpio_t pin);
 int gpio_write(gpio_t pin, int value);
 
@@ -44,9 +51,8 @@ typedef enum
     GPIO_EDGE_RAISING,
     GPIO_EDGE_FALLING
 } gpio_edge_t;
-typedef void (*gpio_isr_t)(int pin, gpio_edge_t edge);
 
-int gpio_attach_isr(gpio_t pin, gpio_edge_t edge, gpio_isr_t isr);
+int gpio_wait_irq(gpio_t pin, gpio_edge_t edge);
 
 //------------------------------------------------------------
 // I2C functions

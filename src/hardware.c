@@ -1,5 +1,5 @@
 
-#include "hardware.h"
+#include <librhid/hardware.h>
 
 //------------------------------------------------------------
 // GPIO functions
@@ -15,6 +15,12 @@ enum
     GPIO_HIGH = 1,
     GPIO_LOW = 0,
     GPIO_ERR = -1
+};
+
+enum
+{
+    GPIO_INPUT,
+    GPIO_OUTPUT
 };
 #endif
 
@@ -66,6 +72,7 @@ int gpio_close(gpio_t pin)
     return rv;
 }
 
+int gpio_direction(gpio_t pin, int direction);
 int gpio_read(gpio_t pin);
 int gpio_write(gpio_t pin, int value);
 
@@ -78,7 +85,7 @@ typedef enum
 typedef void (*gpio_isr_t)(int pin, gpio_edge_t edge);
 #endif
 
-int gpio_attach_isr(gpio_t pin, gpio_edge_t edge, gpio_isr_t isr);
+int gpio_wait_irq(gpio_t pin, gpio_edge_t edge);
 
 //------------------------------------------------------------
 // I2C functions
