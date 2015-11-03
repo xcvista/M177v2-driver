@@ -2,7 +2,21 @@
 version.h
 *.o
 *.a
+
+# Products
 *.so
+gpio-export
+gpio-unexport
+gpio-read
+gpio-write
+gpio-mode
+rhid-reset
+rhid-check
+rhid-backlight
+rhid-command
+rhid-button
+rhid-cursor
+rhid-print
 
 # OS X trouble
 .AppleDouble

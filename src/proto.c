@@ -4,7 +4,7 @@
 
 int proto_get_byte(int fd, uint8_t reg)
 {
-    uint8_t val;
+    uint8_t val = 0;
     ssize_t rv = proto_get_stream(fd, reg, &val, 1);
     
     if (rv > 0)

@@ -44,7 +44,10 @@ int gpio_open(gpio_t pin)
         return -1;
     
     if (file_exist(name, 1))
+    {
+        free(name);
         return 0;
+    }
 
     snprintf(pinid, 20, "%d", pin);
     file_inject("/sys/class/gpio/export", pinid);
@@ -63,7 +66,10 @@ int gpio_close(gpio_t pin)
         return -1;
 
     if (!file_exist(name, 1))
+    {
+        free(name);
         return 0;
+    }
 
     snprintf(pinid, 20, "%d", pin);
     file_inject("/sys/class/gpio/unexport", pinid);
