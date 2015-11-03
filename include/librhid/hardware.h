@@ -1,6 +1,6 @@
 
-#ifndef _HARDWARE_H_
-#define _HARDWARE_H_
+#ifndef _RHID_HARDWARE_H_
+#define _RHID_HARDWARE_H_
 
 #include <linux/i2c-dev.h>
 #include <sys/cdefs.h>
@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
+#include <poll.h>
 
 __BEGIN_DECLS
 
@@ -31,7 +32,8 @@ enum
 {
     GPIO_HIGH = 1,
     GPIO_LOW = 0,
-    GPIO_ERR = -1
+    GPIO_ERR = -1,
+    GPIO_TIMEOUT = -2
 };
 
 enum
@@ -48,11 +50,12 @@ int gpio_write(gpio_t pin, int value);
 
 typedef enum
 {
-    GPIO_EDGE_RAISING,
-    GPIO_EDGE_FALLING
+    GPIO_EDGE_RISING = 1 << 0,
+    GPIO_EDGE_FALLING = 1 << 1,
+    GPIO_EDGE_BOTH = GPIO_EDGE_RISING | GPIO_EDGE_FALLING
 } gpio_edge_t;
 
-int gpio_wait_irq(gpio_t pin, gpio_edge_t edge);
+int gpio_wait_irq(gpio_t pin, gpio_edge_t edge, int timeout);
 
 //------------------------------------------------------------
 // I2C functions
