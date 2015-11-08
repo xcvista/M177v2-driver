@@ -64,7 +64,10 @@ void rhid_close(int fd)
     close(fd);
 }
 
-int rhid_version(int fd, void *buf, size_t len);
+int rhid_version(int fd, void *buf, size_t len)
+{
+    return -1;
+}
 
 int rhid_reset(int fd, int hard)
 {
@@ -116,12 +119,23 @@ int rhid_set_cursor(int fd, uint8_t line, uint8_t character)
 
 int rhid_puts(int fd, const void *buf, size_t len)
 {
-    return proto_set_stream(fd, 5, buf, len);
+    int rv = -1;
+    
+    const char *cbuf = buf;
+    for (size_t idx = 0; idx < len; idx++)
+    {
+        if ((rv = rhid_putchar(fd, cbuf[idx])) < 0)
+            return rv;
+    }
+    
+    return 0; //proto_set_stream(fd, 5, buf, len);
 }
 
 int rhid_putchar(int fd, uint8_t ch)
 {
-    return proto_set_byte(fd, 5, ch);
+    int rv = proto_set_byte(fd, 5, ch);
+    
+    return rv;
 }
 
 int rhid_set_char(int fd, uint8_t ch, uint8_t bitmap[8]);
@@ -162,6 +176,7 @@ struct rhid_event
     int fd;
     pthread_t listening_thread;
     sem_t event_queue_semaphore;
+    pthread_mutex_t event_queue_mutex;
     struct rhid_link *event_queue;
 };
 
@@ -183,6 +198,7 @@ rhid_event_t rhid_event_begin(int fd)
     
     events->fd = fd;
     sem_init(&(events->event_queue_semaphore), 0, 0);
+    pthread_mutex_init(&(events->event_queue_mutex), NULL);
     pthread_create(&(events->listening_thread), NULL, (void *(*)(void *))rhid_event_loop, events);
     return events;
 }
@@ -193,12 +209,14 @@ int rhid_event(rhid_event_t events)
     
     if (events->event_queue)
     {
+        pthread_mutex_lock(&(events->event_queue_mutex));
         struct rhid_link *link = events->event_queue;
         events->event_queue = link->next;
         link->next = NULL;
         
         int value = link->value;
         free(link);
+        pthread_mutex_unlock(&(events->event_queue_mutex));
         return value;
     }
     
@@ -212,6 +230,8 @@ int rhid_event_end(rhid_event_t events)
     rhid_link_destroy(events->event_queue);
     
     free(events);
+    
+    return 0;
 }
 
 void *rhid_event_loop(rhid_event_t events)
@@ -221,18 +241,32 @@ void *rhid_event_loop(rhid_event_t events)
     for (;;)
     {
         int rv;
+        if (gpio_wait_irq(4, GPIO_EDGE_FALLING, -1) < 0)
+            continue;
+        
         if ((rv = rhid_get_buttons(events->fd)) > 0)
         {
-            struct rhid_link *link = malloc(struct rhid_link);
+            struct rhid_link *link = malloc(sizeof(struct rhid_link));
             if (!link)
                 continue;
+            
+            pthread_mutex_lock(&(events->event_queue_mutex));
             
             link->value = rv;
             link->next = NULL;
             
             struct rhid_link *end = events->event_queue;
-            for (; end->next; end = end->next);
-            end->next = link;
+            if (end)
+            {
+                for (; end->next; end = end->next);
+                end->next = link;
+            }
+            else
+            {
+                events->event_queue = link;
+            }
+            
+            pthread_mutex_unlock(&(events->event_queue_mutex));
             
             sem_post(&(events->event_queue_semaphore));
         }

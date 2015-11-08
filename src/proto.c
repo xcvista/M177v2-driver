@@ -37,6 +37,7 @@ ssize_t proto_set_stream(int fd, uint8_t reg, const void *buf, size_t len)
 
     ssize_t rv = write(fd, obuf, len + 1);
     free(obuf);
+    usleep(5000);
     return rv;
 }
 
