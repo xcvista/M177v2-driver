@@ -241,6 +241,8 @@ void *rhid_event_loop(rhid_event_t events)
     for (;;)
     {
         int rv;
+        
+        usleep(5000);
         if (gpio_wait_irq(4, GPIO_EDGE_FALLING, -1) < 0)
             continue;
         
@@ -248,6 +250,15 @@ void *rhid_event_loop(rhid_event_t events)
         {
             struct rhid_link *link = malloc(sizeof(struct rhid_link));
             if (!link)
+                continue;
+            
+            int check = rv;
+            if (!check)
+                continue;
+            
+            for (; !(check & 1); check >>= 1);
+            
+            if (check > 1)
                 continue;
             
             pthread_mutex_lock(&(events->event_queue_mutex));
