@@ -1,5 +1,8 @@
 
+#include <librhid/hardware.h>
+#include <librhid/proto.h>
 #include <librhid/rhid.h>
+#include <semaphore.h>
 
 #ifdef XREF
 #undef XREF
@@ -148,3 +151,92 @@ int rhid_command(int fd, rhid_command_t command)
     return proto_set_byte(fd, 3, command);
 }
 
+struct rhid_link
+{
+    int value;
+    struct rhid_link *next;
+};
+
+struct rhid_event
+{
+    int fd;
+    pthread_t listening_thread;
+    sem_t event_queue_semaphore;
+    struct rhid_link *event_queue;
+};
+
+void *rhid_event_loop(rhid_event_t events);
+
+void rhid_link_destroy(struct rhid_link *link)
+{
+    if (link->next)
+        rhid_link_destroy(link->next);
+    free(link);
+}
+
+rhid_event_t rhid_event_begin(int fd)
+{
+    rhid_event_t events = malloc(sizeof(struct rhid_event));
+    if (!events)
+        return events;
+    memset(events, 0, sizeof(struct rhid_event));
+    
+    events->fd = fd;
+    sem_init(&(events->event_queue_semaphore), 0, 0);
+    pthread_create(&(events->listening_thread), NULL, (void *(*)(void *))rhid_event_loop, events);
+    return events;
+}
+
+int rhid_event(rhid_event_t events)
+{
+    sem_wait(&(events->event_queue_semaphore));
+    
+    if (events->event_queue)
+    {
+        struct rhid_link *link = events->event_queue;
+        events->event_queue = link->next;
+        link->next = NULL;
+        
+        int value = link->value;
+        free(link);
+        return value;
+    }
+    
+    return -1;
+}
+
+int rhid_event_end(rhid_event_t events)
+{
+    pthread_cancel(events->listening_thread);
+    sem_destroy(&(events->event_queue_semaphore));
+    rhid_link_destroy(events->event_queue);
+    
+    free(events);
+}
+
+void *rhid_event_loop(rhid_event_t events)
+{
+    pthread_detach(pthread_self());
+    
+    for (;;)
+    {
+        int rv;
+        if ((rv = rhid_get_buttons(events->fd)) > 0)
+        {
+            struct rhid_link *link = malloc(struct rhid_link);
+            if (!link)
+                continue;
+            
+            link->value = rv;
+            link->next = NULL;
+            
+            struct rhid_link *end = events->event_queue;
+            for (; end->next; end = end->next);
+            end->next = link;
+            
+            sem_post(&(events->event_queue_semaphore));
+        }
+    }
+    
+    return NULL;
+}

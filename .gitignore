@@ -10,13 +10,8 @@ gpio-unexport
 gpio-read
 gpio-write
 gpio-mode
-rhid-reset
-rhid-check
-rhid-backlight
-rhid-command
-rhid-button
-rhid-cursor
-rhid-print
+gpio-wait
+rhid-demo
 
 # OS X trouble
 .AppleDouble
